@@ -115,16 +115,11 @@ def download_song(index, track, folder_name, total_songs):
         stream.download(output_path=output_folder, filename=file_name)
 
         if platform.system() == "Darwin":
-
-            convert_to_mp3_mac(
-                wav_file_name,
-                mp3_file_name,
-            )
-            os.remove(wav_file_name)
+            convert_to_mp3_mac(wav_file_name, mp3_file_name)
         else:
             convert_to_mp3_windows(wav_file_name, mp3_file_name)
-            os.remove(wav_file_name)
-        
+
+        os.remove(wav_file_name)
         print("Downloading Complete")
     else:
         print("Downloading Skipped - File Already Exists")

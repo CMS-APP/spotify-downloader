@@ -1,0 +1,4 @@
+spotipy
+youtube-search-python
+pytubefix
+pydub
