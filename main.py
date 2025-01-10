@@ -1,11 +1,11 @@
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from youtubesearchpython import VideosSearch
-from pytubefix import YouTube  # This is solution
+from pytubefix import YouTube
 import json
 import os
 import subprocess
-
+import platform
 
 def authenticate_spotify(cid, secret):
     try:
@@ -101,31 +101,61 @@ def download_song(index, track, folder_name, total_songs):
     song_name = track[0] + " - " + track[1]
     print("Downloading Song:", song_name, f"({index+1}/{total_songs})")
 
-    file_exists = os.path.exists(f"Downloads/{folder_name}/{song_name}.mp3")
+    wav_file_name = os.path.join("Downloads", folder_name, f"{song_name}.wav")
+    mp3_file_name = os.path.join("Downloads", folder_name, f"{song_name}.mp3")
+    file_exists = os.path.exists(mp3_file_name)
 
     if not file_exists:
         video_link = get_youtube_link(song_name)
         video = YouTube(video_link)
         stream = video.streams.filter(only_audio=True).first()
-        stream.download(filename=f"Downloads/{folder_name}/{song_name}.wav")
-        convert_to_mp3(
-            f"Downloads/{folder_name}/{song_name}.wav",
-            f"Downloads/{folder_name}/{song_name}.mp3",
-        )
+        output_folder = os.path.join("Downloads", folder_name)
 
-        os.remove(f"Downloads/{folder_name}/{song_name}.wav")
+        file_name = f"{song_name}.wav"
+        stream.download(output_path=output_folder, filename=file_name)
+
+        if platform.system() == "Darwin":
+
+            convert_to_mp3_mac(
+                wav_file_name,
+                mp3_file_name,
+            )
+            os.remove(wav_file_name)
+        else:
+            convert_to_mp3_windows(wav_file_name, mp3_file_name)
+            os.remove(wav_file_name)
+        
         print("Downloading Complete")
     else:
         print("Downloading Skipped - File Already Exists")
 
 
-def convert_to_mp3(file, output):
+def convert_to_mp3_mac(file, output):
     cmd = (
         'ffmpeg -i "%s"' % file
         + ' -vn -ar 44100 -ac 2 -ab 192k -f mp3 "%s" > /dev/null 2>&1' % output
     )
     subprocess.call(cmd, shell=True)
 
+def convert_to_mp3_windows(input_file, output_file):
+    try:
+        if not os.path.exists(input_file):
+            print(f"Input file not found: {input_file}")
+            return
+
+        command = [
+            "ffmpeg", 
+            "-i", input_file, 
+            "-vn",
+            "-ar", "44100",
+            "-ac", "2",
+            "-b:a", "192k",  
+            output_file
+        ]
+
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error during conversion: {e.stderr.decode()}")
 
 def main():
     print("\n" + "-" * 50)
@@ -167,8 +197,7 @@ def main():
     print(
         "Enter a Spotify Playlist Link in the format: https://open.spotify.com/playlist/[playlist_id]"
     )
-    # playlist_link = input("Enter Link: ")
-    playlist_link = test_link
+    playlist_link = input("Enter Link: ")
     track_names = get_spotify_track_list(sp, playlist_link)
 
     if not track_names:
@@ -176,8 +205,7 @@ def main():
 
     print("\n" + "-" * 50)
 
-    # folder_name = input("Enter Folder Name: ")
-    folder_name = "Blast Off 2"
+    folder_name = input("Enter Playlist Name (For Your Computer): ")
     if folder_name.replace(" ", "") == "":
         folder_name = "Playlist"
 
